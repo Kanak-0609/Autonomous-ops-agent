@@ -12,16 +12,16 @@ def run():
 
     approved_count = 0
     rejected_count = 0
-    spam_skipped = 0
+    skipped_count = 0
 
     for email in emails:
         triage_result = triage_email(email.sender, email.subject, email.body)
         print(f"[{triage_result.classification.upper():17s}] conf={triage_result.confidence:.2f}  {email.subject!r}")
         print(f"   Reasoning: {triage_result.reasoning}")
 
-        if triage_result.classification == "spam":
-            print("   -> Skipping draft (spam).\n")
-            spam_skipped += 1
+        if triage_result.classification in ("spam", "other"):
+            print(f"   -> Skipping draft ({triage_result.classification}).\n")
+            skipped_count += 1
             continue
 
         draft = draft_reply(
@@ -60,7 +60,7 @@ def run():
     print("--- Summary ---")
     print(f"Approved & sent: {approved_count}")
     print(f"Rejected: {rejected_count}")
-    print(f"Spam skipped: {spam_skipped}")
+    print(f"Skipped (spam/other): {skipped_count}")
 
 
 if __name__ == "__main__":

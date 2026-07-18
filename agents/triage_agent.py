@@ -8,7 +8,7 @@ from google import genai
 
 load_dotenv()
 
-Classification = Literal["billing_question", "new_inquiry", "spam"]
+Classification = Literal["billing_question", "new_inquiry", "spam", "other"]
 
 client = genai.Client(api_key=os.getenv("GEMINI_API_KEY"))
 
@@ -17,6 +17,9 @@ Classify the email into exactly one of these categories:
 - billing_question: existing client asking about an invoice, payment, or rate
 - new_inquiry: a prospective client asking about services, availability, or pricing
 - spam: promotional, phishing, or irrelevant content
+- other: anything that doesn't fit the above, such as scheduling requests, general
+  check-ins, or internal admin -- do not force these into billing_question or
+  new_inquiry just because the sender is a known client or prospect
 
 Respond ONLY with valid JSON in this exact format, no other text:
 {"classification": "<category>", "confidence": <0.0-1.0>, "reasoning": "<one sentence>"}
