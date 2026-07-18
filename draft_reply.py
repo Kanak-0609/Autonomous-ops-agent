@@ -1,8 +1,8 @@
-from memory.memory_store import get_past_interactions
 import os
 from dotenv import load_dotenv
 from google import genai
 from tools.sheets_tool import get_client_record
+from memory.memory_store import get_past_interactions
 
 load_dotenv()
 
@@ -17,6 +17,7 @@ def load_company_info() -> str:
 def draft_reply(sender: str, subject: str, body: str, classification: str) -> str:
     company_info = load_company_info()
     client_record = get_client_record(sender)
+    past_interactions = get_past_interactions(sender)
 
     if client_record:
         client_context = (
@@ -29,6 +30,15 @@ def draft_reply(sender: str, subject: str, body: str, classification: str) -> st
     else:
         client_context = "This sender is NOT in our CRM (likely a new prospect)."
 
+    if past_interactions:
+        history_lines = [
+            f"- {i['subject']} ({i['classification']}): {i['summary']}"
+            for i in past_interactions
+        ]
+        history_context = "Past interactions with this sender:\n" + "\n".join(history_lines)
+    else:
+        history_context = "No past interactions with this sender."
+
     prompt = f"""You are drafting an email reply on behalf of Bright Consulting.
 
 COMPANY CONTEXT:
@@ -37,15 +47,18 @@ COMPANY CONTEXT:
 CLIENT RECORD:
 {client_context}
 
+PAST INTERACTION HISTORY:
+{history_context}
+
 INCOMING EMAIL (classified as: {classification}):
 From: {sender}
 Subject: {subject}
 {body}
 
-Write a warm, professional reply using ONLY the facts in the company context and
-client record above. Do not invent any details not explicitly stated. If the client
-record answers the question directly, use it confidently instead of asking the sender
-to confirm something you already know.
+Write a warm, professional reply using ONLY the facts in the company context, client
+record, and past interaction history above. Do not invent any details not explicitly
+stated. If this topic was already addressed in a past interaction, acknowledge that
+naturally rather than explaining everything from scratch again.
 Keep it under 120 words. Sign off as "The Bright Consulting Team"."""
 
     response = client.models.generate_content(

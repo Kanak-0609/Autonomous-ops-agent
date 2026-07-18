@@ -1,11 +1,18 @@
 from tools.gmail_tool import fetch_unread_emails
 from agents.triage_agent import triage_email
 from agents.draft_agent import draft_reply
+from agents.approval_gate import request_approval
+from memory.memory_store import init_db, log_interaction
 
 
 def run():
+    init_db()
     emails = fetch_unread_emails()
     print(f"Fetched {len(emails)} unread email(s).\n")
+
+    approved_count = 0
+    rejected_count = 0
+    spam_skipped = 0
 
     for email in emails:
         triage_result = triage_email(email.sender, email.subject, email.body)
@@ -14,6 +21,7 @@ def run():
 
         if triage_result.classification == "spam":
             print("   -> Skipping draft (spam).\n")
+            spam_skipped += 1
             continue
 
         draft = draft_reply(
@@ -22,9 +30,37 @@ def run():
             body=email.body,
             classification=triage_result.classification,
         )
-        print(f"   -> Drafted reply:\n")
-        print("   " + draft.replace("\n", "\n   "))
-        print()
+
+        approved = request_approval(
+            action_description=f"Send email reply to {email.sender}",
+            details=draft,
+        )
+
+        if approved:
+            print(f"   -> [SENT] Reply to {email.sender}\n")
+            approved_count += 1
+            log_interaction(
+                sender_email=email.sender,
+                subject=email.subject,
+                classification=triage_result.classification,
+                outcome="sent",
+                summary=draft[:200],
+            )
+        else:
+            print(f"   -> [DISCARDED] Reply to {email.sender} was rejected\n")
+            rejected_count += 1
+            log_interaction(
+                sender_email=email.sender,
+                subject=email.subject,
+                classification=triage_result.classification,
+                outcome="rejected",
+                summary=draft[:200],
+            )
+
+    print("--- Summary ---")
+    print(f"Approved & sent: {approved_count}")
+    print(f"Rejected: {rejected_count}")
+    print(f"Spam skipped: {spam_skipped}")
 
 
 if __name__ == "__main__":
