@@ -3,6 +3,7 @@ import os
 from dotenv import load_dotenv
 from google import genai
 from tools.sheets_tool import get_client_record
+from langsmith import traceable
 
 load_dotenv()
 
@@ -13,7 +14,7 @@ def load_company_info() -> str:
     with open("docs/company_info.txt", "r") as f:
         return f.read()
 
-
+@traceable(name="draft_reply")
 def draft_reply(sender: str, subject: str, body: str, classification: str) -> str:
     company_info = load_company_info()
     client_record = get_client_record(sender)

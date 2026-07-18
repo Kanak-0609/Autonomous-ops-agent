@@ -2,6 +2,7 @@ import os
 import json
 from dataclasses import dataclass
 from typing import Literal
+from langsmith import traceable
 
 from dotenv import load_dotenv
 from google import genai
@@ -33,6 +34,7 @@ class TriageResult:
     reasoning: str
 
 
+@traceable(name="triage_email")
 def triage_email(sender: str, subject: str, body: str) -> TriageResult:
     user_content = f"From: {sender}\nSubject: {subject}\n\n{body}"
 

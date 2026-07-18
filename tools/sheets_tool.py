@@ -2,6 +2,7 @@ import os
 import gspread
 from google.oauth2.service_account import Credentials
 from dotenv import load_dotenv
+from langsmith import traceable
 
 load_dotenv()
 
@@ -15,7 +16,7 @@ def _get_client():
     creds = Credentials.from_service_account_file(CREDENTIALS_PATH, scopes=SCOPES)
     return gspread.authorize(creds)
 
-
+@traceable(name="get_client_record")
 def get_client_record(email: str) -> dict | None:
     """Look up a client's CRM record by email address."""
     client = _get_client()
