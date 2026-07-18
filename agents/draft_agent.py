@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from google import genai
+from tools.sheets_tool import get_client_record
 
 load_dotenv()
 
@@ -14,23 +15,36 @@ def load_company_info() -> str:
 
 def draft_reply(sender: str, subject: str, body: str, classification: str) -> str:
     company_info = load_company_info()
+    client_record = get_client_record(sender)
+
+    if client_record:
+        client_context = (
+            f"This sender IS an existing client in our CRM. Their record:\n"
+            f"Name: {client_record['name'].strip()}\n"
+            f"Status: {client_record['status']}\n"
+            f"Current rate: ${client_record['monthly_rate']}/month\n"
+            f"Notes: {client_record['notes']}"
+        )
+    else:
+        client_context = "This sender is NOT in our CRM (likely a new prospect)."
 
     prompt = f"""You are drafting an email reply on behalf of Bright Consulting.
 
 COMPANY CONTEXT:
 {company_info}
 
+CLIENT RECORD:
+{client_context}
+
 INCOMING EMAIL (classified as: {classification}):
 From: {sender}
 Subject: {subject}
 {body}
 
-Write a warm, professional reply using ONLY the facts in the company context above.
-Do not invent any details not explicitly stated — this includes the client's billing
-history, how long they've been a client, what phase of onboarding they are in, or any
-other specifics not present in the company context or the incoming email itself.
-If the incoming email doesn't give you enough information to answer precisely, ask
-a clarifying question instead of guessing.
+Write a warm, professional reply using ONLY the facts in the company context and
+client record above. Do not invent any details not explicitly stated. If the client
+record answers the question directly, use it confidently instead of asking the sender
+to confirm something you already know.
 Keep it under 120 words. Sign off as "The Bright Consulting Team"."""
 
     response = client.models.generate_content(
