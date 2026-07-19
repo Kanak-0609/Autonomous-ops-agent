@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth, useUser, RedirectToSignIn, UserButton } from "@clerk/nextjs";
+import Link from "next/link";
 
 interface Metrics {
   total_processed: number;
@@ -171,7 +172,10 @@ function DashboardContent() {
                 <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: GLOW.mint }} />
               </span>
               <span className="text-xs tracking-[0.15em] text-[#9397AC] uppercase">Live</span>
-              <UserButton afterSignOutUrl="/sign-in" />
+              <Link href="/settings" className="text-xs text-[#9397AC] hover:text-[#F2F2F8] transition-colors underline underline-offset-4">
+                Settings
+              </Link>
+            <UserButton />
             </div>
             <h1 className="font-[family-name:var(--font-display)] text-4xl md:text-5xl font-bold tracking-tight mb-4">
               {user?.firstName ? `${user.firstName}'s Ops Agent` : "Autonomous Ops Agent"}
