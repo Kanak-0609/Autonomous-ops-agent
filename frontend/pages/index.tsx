@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth, useUser, RedirectToSignIn, UserButton } from "@clerk/nextjs";
 
 interface Metrics {
   total_processed: number;
@@ -49,17 +50,55 @@ const OUTCOME_STYLES: Record<string, { text: string; bg: string; border: string 
 const STACK = ["Gemini", "Neon Postgres", "Custom MCP Server", "LangSmith"];
 
 export default function Dashboard() {
+  const { isLoaded, isSignedIn } = useAuth();
+
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-[#05050A] flex items-center justify-center">
+        <span className="font-[family-name:var(--font-body)] text-[#9397AC] text-sm">
+          Checking session...
+        </span>
+      </div>
+    );
+  }
+
+  if (!isSignedIn) {
+    return <RedirectToSignIn />;
+  }
+
+  return <DashboardContent />;
+}
+
+function DashboardContent() {
+  const { user } = useUser();
+  const [orgId, setOrgId] = useState<number | null>(null);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [interactions, setInteractions] = useState<Interaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    async function ensureOrg() {
+      try {
+        const res = await fetch("/api/ensure-org");
+        const org = await res.json();
+        setOrgId(org.id);
+      } catch {
+        setError("Could not set up your organization. Check the API route logs.");
+        setLoading(false);
+      }
+    }
+    ensureOrg();
+  }, []);
+
+  useEffect(() => {
+    if (!orgId) return;
+
     async function loadData() {
       try {
         const [m, i] = await Promise.all([
-          fetch(`${API_BASE}/api/metrics`).then((r) => r.json()),
-          fetch(`${API_BASE}/api/interactions`).then((r) => r.json()),
+          fetch(`${API_BASE}/api/metrics?organization_id=${orgId}`).then((r) => r.json()),
+          fetch(`${API_BASE}/api/interactions?organization_id=${orgId}`).then((r) => r.json()),
         ]);
         setMetrics(m);
         setInteractions(i);
@@ -72,7 +111,7 @@ export default function Dashboard() {
     loadData();
     const interval = setInterval(loadData, 8000);
     return () => clearInterval(interval);
-  }, []);
+  }, [orgId]);
 
   const stages = [
     { label: "Fetched", value: metrics?.total_processed ?? 0, color: GLOW.violet },
@@ -86,7 +125,7 @@ export default function Dashboard() {
     return (
       <div className="min-h-screen bg-[#05050A] flex items-center justify-center">
         <span className="font-[family-name:var(--font-body)] text-[#9397AC] text-sm">
-          Connecting to agent...
+          Setting up your workspace...
         </span>
       </div>
     );
@@ -108,7 +147,6 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#05050A] text-[#F2F2F8] font-[family-name:var(--font-body)] relative overflow-hidden">
 
-      {/* Grain texture */}
       <div
         className="pointer-events-none fixed inset-0 opacity-[0.035] mix-blend-overlay z-10"
         style={{
@@ -117,7 +155,6 @@ export default function Dashboard() {
         }}
       />
 
-      {/* Ambient gradient orbs */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -top-40 -left-40 w-[550px] h-[550px] rounded-full opacity-25 blur-[130px]" style={{ background: GLOW.violet }} />
         <div className="absolute top-1/3 -right-40 w-[550px] h-[550px] rounded-full opacity-20 blur-[130px]" style={{ background: GLOW.cyan }} />
@@ -126,18 +163,18 @@ export default function Dashboard() {
 
       <div className="relative max-w-5xl mx-auto px-6 py-14 md:px-10">
 
-        {/* Header with hero stat */}
         <div className="flex items-end justify-between mb-6 flex-wrap gap-6">
           <div>
-            <div className="flex items-center gap-2 mb-4">
+            <div className="flex items-center gap-3 mb-4">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full opacity-75" style={{ background: GLOW.mint }} />
                 <span className="relative inline-flex rounded-full h-2 w-2" style={{ background: GLOW.mint }} />
               </span>
               <span className="text-xs tracking-[0.15em] text-[#9397AC] uppercase">Live</span>
+              <UserButton afterSignOutUrl="/sign-in" />
             </div>
             <h1 className="font-[family-name:var(--font-display)] text-4xl md:text-5xl font-bold tracking-tight mb-4">
-              Autonomous Ops Agent
+              {user?.firstName ? `${user.firstName}'s Ops Agent` : "Autonomous Ops Agent"}
             </h1>
             <div className="flex flex-wrap gap-2">
               {STACK.map((s) => (
@@ -169,7 +206,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Signature: glowing pipeline hero */}
         <div className="relative rounded-3xl mb-6 p-8 md:p-10 backdrop-blur-xl bg-white/[0.035] border border-white/[0.08] shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
           <div className="text-xs tracking-[0.15em] text-[#9397AC] uppercase mb-8">Pipeline</div>
           <div className="flex items-center justify-between">
@@ -220,7 +256,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Asymmetric bento row */}
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
           <div className="md:col-span-2">
             <StatTile label="Rejected" value={metrics?.rejected ?? 0} color={GLOW.coral} />
@@ -233,7 +268,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Activity */}
         <div className="text-xs tracking-[0.15em] text-[#9397AC] uppercase mb-4">Activity</div>
         <div className="rounded-3xl backdrop-blur-xl bg-white/[0.035] border border-white/[0.08] overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.3)]">
           {interactions.length === 0 ? (

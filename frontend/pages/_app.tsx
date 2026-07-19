@@ -1,4 +1,5 @@
 import type { AppProps } from "next/app";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Space_Grotesk, Inter } from "next/font/google";
 import "@/styles/globals.css";
 
@@ -16,8 +17,10 @@ const body = Inter({
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <main className={`${display.variable} ${body.variable}`}>
-      <Component {...pageProps} />
-    </main>
+    <ClerkProvider>
+      <main className={`${display.variable} ${body.variable}`}>
+        <Component {...pageProps} />
+      </main>
+    </ClerkProvider>
   );
 }
